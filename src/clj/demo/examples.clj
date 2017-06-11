@@ -1,12 +1,8 @@
 (ns demo.examples
   (:require [datomic.api :as d]))
 
-(def uri "datomic:free://localhost:4334/demo")
-(def conn (d/connect uri))
-(def db (d/db conn))
-
 (defn list-people [db]
-  (d/q '[:find ?name ?surname
+  (d/q '[:find ?p ?name ?surname
          :in $
          :where
          [?p :person/name ?name]
@@ -15,7 +11,7 @@
 
 (defn add-person [conn name surname birth-year]
   (d/transact conn [{:person/name name
-                     :person/surname surname
+                     :persona/surname surname
                      :person/birth-year birth-year}]))
 
 (defn generation [birth-year]
@@ -36,11 +32,11 @@
        db
        generation))
 
-(defn list-companies [db company]
-  (d/q '[:find ?company
+(defn list-companies [db]
+  (d/q '[:find ?e ?company
          :in $
          :where
-         [_ :company/name ?company]]
+         [?e :company/name ?company]]
        db))
 
 (defn list-employees [db company]
@@ -56,21 +52,22 @@
 
 (defn add-employee [conn company employee-id]
   (d/transact conn [{:company/name company
-                     :company/employees employee-id}]))
+                     :company/employee employee-id}]))
 
 (defn move-employee [conn from-company to-company employee-id]
-  (d/transact conn [[:db/add :from :company/name from-company]
-                    [:db/add :from :company/employees employee-id]
-                    [:db/add :to :company/name to-company]
-                    [:db/retract :to :company/employees employee-id]]))
+  (d/transact conn [[:db/retract from-company :company/employee employee-id]
+                    [:db/add to-company :company/employee employee-id]]))
 
-(defn list-jobs [db employee-id]
+(defn list-jobs [db name surname]
   (d/q '[:find ?company ?start-date
-         :in $ ?employee
+         :in $ ?name ?surname ?added
          :where
+         [?e :person/name ?name]
+         [?e :person/surname ?surname]
          [?c :company/name ?company]
-         [?c :company/employees ?employee ?tx]
-         [?tx :db/txInstant ?start-date]
-         [?tx]]
-       (d/history db)
-       employee-id))
+         [?c :company/employee ?e ?tx ?added]
+         [?tx :db/txInstant ?start-date]]
+       l
+       name
+       surname
+       true))
